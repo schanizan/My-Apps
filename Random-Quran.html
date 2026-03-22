@@ -1,0 +1,516 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+  <title>Double Random Generator</title>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #f9f8f6;
+      --surface: #f2f0ec;
+      --card: #ffffff;
+      --border: #e3dfd8;
+      --accent: #c96a2c;
+      --accent-dim: #c96a2c18;
+      --accent-glow: #c96a2c35;
+      --gold: #b45309;
+      --gold-dim: #b4530915;
+      --text: #1a1714;
+      --muted: #9a8f85;
+      --shadow: rgba(0,0,0,0.07);
+    }
+
+    html, body {
+      height: 100%;
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Share Tech Mono', monospace;
+      overflow-x: hidden;
+    }
+
+    body {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-height: 100vh;
+      padding: 0 0 40px;
+    }
+
+    /* Subtle dot pattern */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image: radial-gradient(circle, var(--border) 1px, transparent 1px);
+      background-size: 28px 28px;
+      opacity: 0.6;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* Top warm glow */
+    body::after {
+      content: '';
+      position: fixed;
+      top: -80px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 500px;
+      height: 260px;
+      background: radial-gradient(ellipse, #c96a2c12 0%, transparent 70%);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .wrapper {
+      position: relative;
+      z-index: 1;
+      width: 100%;
+      max-width: 440px;
+      padding: 0 20px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 24px;
+    }
+
+    /* ---- Header ---- */
+    header {
+      text-align: center;
+      padding-top: 36px;
+    }
+
+    .label-tag {
+      font-family: 'Orbitron', sans-serif;
+      font-size: 10px;
+      letter-spacing: 4px;
+      color: var(--accent);
+      text-transform: uppercase;
+      margin-bottom: 8px;
+    }
+
+    h1 {
+      font-family: 'Orbitron', sans-serif;
+      font-size: clamp(18px, 5vw, 24px);
+      font-weight: 900;
+      letter-spacing: 2px;
+      color: var(--text);
+      line-height: 1.2;
+    }
+
+    h1 span {
+      color: var(--accent);
+    }
+
+    /* ---- Display Cards ---- */
+    .display-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+      width: 100%;
+    }
+
+    .display-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 20px 12px;
+      text-align: center;
+      position: relative;
+      overflow: hidden;
+      box-shadow: 0 2px 8px var(--shadow);
+      transition: border-color 0.3s, box-shadow 0.3s;
+    }
+
+    .display-card.lit {
+      border-color: var(--accent);
+      box-shadow: 0 4px 20px var(--accent-glow);
+    }
+
+    .display-card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 2px;
+      background: linear-gradient(90deg, transparent, var(--accent), transparent);
+      opacity: 0;
+      transition: opacity 0.3s;
+    }
+
+    .display-card.lit::before { opacity: 1; }
+
+    .card-label {
+      font-size: 9px;
+      letter-spacing: 3px;
+      color: var(--muted);
+      text-transform: uppercase;
+      margin-bottom: 12px;
+    }
+
+    .card-number {
+      font-family: 'Orbitron', sans-serif;
+      font-size: clamp(36px, 12vw, 52px);
+      font-weight: 900;
+      color: var(--accent);
+      line-height: 1;
+      min-height: 52px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: color 0.2s;
+    }
+
+    .card-number.idle { color: var(--border); }
+
+    .card-range {
+      font-size: 10px;
+      color: var(--muted);
+      margin-top: 8px;
+      letter-spacing: 1px;
+      min-height: 14px;
+    }
+
+    /* Rolling animation */
+    @keyframes roll {
+      0%   { opacity: 0; transform: translateY(-8px); }
+      100% { opacity: 1; transform: translateY(0); }
+    }
+
+    .card-number.rolling {
+      animation: roll 0.08s ease-out forwards;
+    }
+
+    /* ---- Button ---- */
+    .btn-wrap {
+      width: 100%;
+    }
+
+    #startBtn {
+      width: 100%;
+      padding: 20px;
+      border: none;
+      border-radius: 12px;
+      background: var(--accent);
+      color: #fff;
+      font-family: 'Orbitron', sans-serif;
+      font-size: 16px;
+      font-weight: 700;
+      letter-spacing: 4px;
+      text-transform: uppercase;
+      cursor: pointer;
+      position: relative;
+      overflow: hidden;
+      transition: transform 0.1s, box-shadow 0.2s, background 0.2s;
+      box-shadow: 0 4px 16px var(--accent-glow);
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    #startBtn:active {
+      transform: scale(0.97);
+      box-shadow: 0 2px 6px var(--accent-glow);
+    }
+
+    #startBtn::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(135deg, rgba(255,255,255,0.15) 0%, transparent 60%);
+    }
+
+    #startBtn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    /* ---- History ---- */
+    .history-section {
+      width: 100%;
+    }
+
+    .history-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 12px;
+    }
+
+    .history-title {
+      font-size: 9px;
+      letter-spacing: 3px;
+      color: var(--muted);
+      text-transform: uppercase;
+    }
+
+    .history-line {
+      flex: 1;
+      height: 1px;
+      background: var(--border);
+    }
+
+    .history-count {
+      font-size: 9px;
+      color: var(--muted);
+      letter-spacing: 1px;
+    }
+
+    .history-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .history-item {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 11px 16px;
+      display: grid;
+      grid-template-columns: 24px 1fr 1fr auto;
+      align-items: center;
+      gap: 10px;
+      font-size: 13px;
+      box-shadow: 0 1px 4px var(--shadow);
+      animation: slideIn 0.3s ease-out;
+    }
+
+    @keyframes slideIn {
+      from { opacity: 0; transform: translateY(-6px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    .history-item:first-child {
+      border-color: var(--accent);
+      background: linear-gradient(135deg, #fdf4ef, var(--card));
+    }
+
+    .hist-index {
+      color: var(--muted);
+      font-size: 10px;
+      text-align: center;
+    }
+
+    .hist-s1, .hist-s2 {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .hist-lbl {
+      font-size: 8px;
+      letter-spacing: 2px;
+      color: var(--muted);
+      text-transform: uppercase;
+    }
+
+    .hist-val {
+      font-family: 'Orbitron', sans-serif;
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--text);
+    }
+
+    .hist-s1 .hist-val { color: var(--gold); }
+    .hist-s2 .hist-val { color: var(--accent); }
+
+    .hist-arrow {
+      color: var(--muted);
+      font-size: 12px;
+      text-align: right;
+    }
+
+    /* Empty state */
+    .history-empty {
+      text-align: center;
+      padding: 24px;
+      color: var(--muted);
+      font-size: 12px;
+      letter-spacing: 2px;
+      border: 1px dashed var(--border);
+      border-radius: 8px;
+    }
+  </style>
+</head>
+<body>
+
+<div class="wrapper">
+
+  <header>
+    <div class="label-tag">Dual-Stage Randomizer</div>
+    <h1>DOUBLE <span>RANDOM</span><br>GENERATOR</h1>
+  </header>
+
+  <!-- Display -->
+  <div class="display-row">
+    <div class="display-card" id="card1">
+      <div class="card-label">Stack 1 · Draw</div>
+      <div class="card-number idle" id="num1">—</div>
+      <div class="card-range" id="range1">1 – 114</div>
+    </div>
+    <div class="display-card" id="card2">
+      <div class="card-label">Stack 2 · Result</div>
+      <div class="card-number idle" id="num2">—</div>
+      <div class="card-range" id="range2">–</div>
+    </div>
+  </div>
+
+  <!-- Button -->
+  <div class="btn-wrap">
+    <button id="startBtn">▶ &nbsp; START</button>
+  </div>
+
+  <!-- History -->
+  <div class="history-section">
+    <div class="history-header">
+      <div class="history-title">Last 10 Results</div>
+      <div class="history-line"></div>
+      <div class="history-count" id="histCount">0 / 10</div>
+    </div>
+    <div class="history-list" id="historyList">
+      <div class="history-empty" id="emptyState">No draws yet — press START to begin</div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+  // Stack 2 max values indexed by row (1-based)
+  const STACK2 = [
+    null, // index 0 unused
+    7, 286, 200, 176, 120, 165, 206, 75, 129, 109,   // 1-10
+    123, 111, 43, 52, 99, 128, 111, 110, 98, 135,     // 11-20
+    112, 78, 118, 64, 77, 227, 93, 88, 69, 60,        // 21-30
+    34, 30, 73, 54, 45, 83, 182, 88, 75, 85,          // 31-40
+    54, 53, 89, 59, 37, 35, 38, 29, 18, 45,           // 41-50
+    56, 49, 62, 55, 78, 96, 29, 22, 24, 13,           // 51-60
+    14, 11, 11, 18, 12, 12, 30, 52, 52, 44,           // 61-70
+    28, 28, 20, 56, 40, 31, 50, 40, 46, 42,           // 71-80
+    29, 19, 36, 25, 22, 17, 19, 26, 30, 20,           // 81-90
+    15, 21, 11, 8, 8, 19, 5, 8, 8, 11,                // 91-100
+    11, 8, 3, 9, 5, 4, 7, 3, 6, 3,                    // 101-110
+    5, 4, 5, 6                                         // 111-114
+  ];
+
+  const num1El    = document.getElementById('num1');
+  const num2El    = document.getElementById('num2');
+  const range1El  = document.getElementById('range1');
+  const range2El  = document.getElementById('range2');
+  const card1El   = document.getElementById('card1');
+  const card2El   = document.getElementById('card2');
+  const startBtn  = document.getElementById('startBtn');
+  const histList  = document.getElementById('historyList');
+  const histCount = document.getElementById('histCount');
+  const emptyEl   = document.getElementById('emptyState');
+
+  let history = [];
+  let rolling = false;
+
+  function randInt(max) {
+    return Math.floor(Math.random() * max) + 1;
+  }
+
+  function animateNumber(el, finalVal, duration, onDone) {
+    const max = parseInt(el.dataset.max || finalVal);
+    let elapsed = 0;
+    const interval = 50;
+
+    const tick = setInterval(() => {
+      el.classList.remove('rolling');
+      void el.offsetWidth; // reflow
+      el.classList.add('rolling');
+      el.textContent = randInt(Math.max(finalVal, 1));
+      elapsed += interval;
+
+      if (elapsed >= duration) {
+        clearInterval(tick);
+        el.classList.remove('rolling');
+        void el.offsetWidth;
+        el.classList.add('rolling');
+        el.textContent = finalVal;
+        if (onDone) onDone();
+      }
+    }, interval);
+  }
+
+  function draw() {
+    if (rolling) return;
+    rolling = true;
+    startBtn.disabled = true;
+
+    // Reset cards
+    card1El.classList.remove('lit');
+    card2El.classList.remove('lit');
+    num1El.classList.remove('idle');
+    num2El.classList.remove('idle');
+
+    const s1 = randInt(114);
+    const s2Max = STACK2[s1];
+    const s2 = randInt(s2Max);
+
+    // Animate Stack 1
+    num1El.dataset.max = 114;
+    num2El.dataset.max = s2Max;
+    range2El.textContent = `1 – ${s2Max}`;
+
+    animateNumber(num1El, s1, 600, () => {
+      card1El.classList.add('lit');
+
+      // Short pause then animate Stack 2
+      setTimeout(() => {
+        animateNumber(num2El, s2, 500, () => {
+          card2El.classList.add('lit');
+          addHistory(s1, s2, s2Max);
+          rolling = false;
+          startBtn.disabled = false;
+        });
+      }, 200);
+    });
+  }
+
+  function addHistory(s1, s2, s2Max) {
+    history.unshift({ s1, s2, s2Max });
+    if (history.length > 10) history.pop();
+
+    renderHistory();
+  }
+
+  function renderHistory() {
+    if (history.length === 0) {
+      emptyEl.style.display = 'block';
+      histCount.textContent = '0 / 10';
+      return;
+    }
+
+    emptyEl.style.display = 'none';
+    histCount.textContent = `${history.length} / 10`;
+
+    // Rebuild list
+    histList.innerHTML = '';
+    histList.appendChild(emptyEl); // keep in DOM
+
+    history.forEach((entry, i) => {
+      const item = document.createElement('div');
+      item.className = 'history-item';
+      item.innerHTML = `
+        <div class="hist-index">${i === 0 ? '★' : `#${history.length - i}`}</div>
+        <div class="hist-s1">
+          <div class="hist-lbl">Stack 1</div>
+          <div class="hist-val">${entry.s1}</div>
+        </div>
+        <div class="hist-s2">
+          <div class="hist-lbl">Stack 2</div>
+          <div class="hist-val">${entry.s2} <span style="font-size:9px;color:var(--muted);font-family:'Share Tech Mono'">/ ${entry.s2Max}</span></div>
+        </div>
+        <div class="hist-arrow">→</div>
+      `;
+      histList.insertBefore(item, emptyEl);
+    });
+  }
+
+  startBtn.addEventListener('click', draw);
+  renderHistory();
+</script>
+</body>
+</html>
