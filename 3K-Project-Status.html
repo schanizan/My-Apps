@@ -1,0 +1,551 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>3K-Project-Status</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600;9..40,700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#FAF8F4;--surface:#FFFFFF;--surface2:#F5F1EB;--border:#E8E0D4;
+  --text:#1C1917;--text-muted:#78716C;--text-light:#A8A29E;
+  --accent:#C2692A;--accent-light:#F5E6D8;--accent-dark:#9A4F1C;
+  --green:#16A34A;--amber:#D97706;--gray:#D1CCC6;--gray-light:#F5F5F4;
+  --shadow-sm:0 1px 3px rgba(0,0,0,0.06),0 1px 2px rgba(0,0,0,0.04);
+  --shadow:0 4px 12px rgba(0,0,0,0.08),0 2px 4px rgba(0,0,0,0.04);
+  --shadow-lg:0 12px 32px rgba(0,0,0,0.10),0 4px 8px rgba(0,0,0,0.06);
+  --radius:14px;--radius-sm:8px;
+  --font-serif:'DM Serif Display',Georgia,serif;
+  --font-sans:'DM Sans',system-ui,sans-serif;
+}
+html{font-size:16px;-webkit-text-size-adjust:100%}
+body{font-family:var(--font-sans);background:var(--bg);color:var(--text);min-height:100vh}
+
+/* ── UPLOAD SCREEN ── */
+#upload-screen{
+  min-height:100vh;display:flex;align-items:center;justify-content:center;
+  padding:24px;
+  background:var(--bg);
+  background-image:
+    radial-gradient(ellipse at 15% 50%,rgba(194,105,42,.07) 0%,transparent 55%),
+    radial-gradient(ellipse at 85% 15%,rgba(194,105,42,.04) 0%,transparent 50%);
+}
+.upload-card{
+  background:var(--surface);border-radius:20px;padding:52px 36px 44px;
+  text-align:center;max-width:420px;width:100%;
+  box-shadow:var(--shadow-lg);
+  border:2px dashed var(--border);
+  transition:border-color .2s,background .2s;
+}
+.upload-card.drag-over{border-color:var(--accent);background:var(--accent-light)}
+.upload-icon{
+  width:64px;height:64px;background:var(--accent-light);border-radius:50%;
+  display:flex;align-items:center;justify-content:center;
+  margin:0 auto 20px;font-size:28px;
+}
+.upload-card h1{font-family:var(--font-serif);font-size:1.7rem;margin-bottom:6px}
+.upload-card p{color:var(--text-muted);font-size:.9rem;line-height:1.6;margin-bottom:28px}
+.upload-btn{
+  display:inline-flex;align-items:center;gap:8px;
+  background:var(--accent);color:#fff;
+  border:none;border-radius:var(--radius-sm);
+  padding:12px 24px;font-family:var(--font-sans);
+  font-size:.95rem;font-weight:600;
+  cursor:pointer;transition:background .2s,transform .1s;
+}
+.upload-btn:hover{background:var(--accent-dark);transform:translateY(-1px)}
+.upload-btn:active{transform:translateY(0)}
+#file-input{display:none}
+.upload-hint{font-size:.76rem;color:var(--text-light);margin-top:14px}
+
+/* ── DASHBOARD ── */
+#dashboard{display:none}
+
+/* Header */
+.dash-header{
+  background:var(--text);color:#FAF8F4;
+  padding:15px 20px;
+  position:sticky;top:0;z-index:100;
+  display:flex;align-items:center;justify-content:space-between;
+  gap:12px;box-shadow:0 2px 12px rgba(0,0,0,.2);flex-wrap:wrap;
+}
+.dash-header-left{flex:1;min-width:0}
+.dash-eyebrow{
+  font-size:.65rem;font-weight:600;letter-spacing:.12em;
+  text-transform:uppercase;color:var(--accent);margin-bottom:2px;
+}
+.dash-title{
+  font-family:var(--font-serif);
+  font-size:clamp(.95rem,4vw,1.35rem);
+  font-weight:400;line-height:1.2;color:#FAF8F4;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
+.dash-date{font-size:.72rem;color:#A8A29E;margin-top:2px}
+.header-actions{display:flex;gap:7px;flex-shrink:0}
+.hdr-btn{
+  background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.15);
+  color:#FAF8F4;border-radius:var(--radius-sm);
+  padding:7px 13px;font-family:var(--font-sans);font-size:.77rem;
+  cursor:pointer;white-space:nowrap;transition:background .2s;
+  display:flex;align-items:center;gap:5px;
+}
+.hdr-btn:hover{background:rgba(255,255,255,.2)}
+.hdr-btn.dl{background:rgba(194,105,42,.35);border-color:rgba(194,105,42,.5)}
+.hdr-btn.dl:hover{background:rgba(194,105,42,.55)}
+
+/* ── STATUS CONTENT ── */
+.status-content{padding:20px 16px 40px}
+.status-grid{display:flex;flex-direction:column;gap:20px}
+
+/* Status card */
+.status-card{
+  background:var(--surface);border-radius:var(--radius);
+  border:1px solid var(--border);box-shadow:var(--shadow-sm);overflow:hidden;
+}
+.status-card-header{
+  padding:13px 18px;background:var(--surface2);
+  border-bottom:1px solid var(--border);
+  display:flex;align-items:center;gap:10px;
+}
+.sc-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
+.sc-title{font-size:.86rem;font-weight:600;color:var(--text);flex:1}
+.sc-overall{
+  font-size:.74rem;font-weight:700;
+  padding:3px 11px;border-radius:20px;border:1.5px solid currentColor;
+}
+.sc-overall.c-done{color:var(--green)}
+.sc-overall.c-wip {color:var(--amber)}
+.sc-overall.c-none{color:var(--text-light);border-color:var(--border)}
+
+/* Ring grid */
+.ring-grid{
+  display:grid;
+  grid-template-columns:repeat(auto-fill,minmax(88px,1fr));
+  gap:12px 8px;padding:16px;
+}
+@media(max-width:480px){
+  .ring-grid{grid-template-columns:repeat(auto-fill,minmax(74px,1fr));gap:10px 6px}
+}
+.ring-item{
+  display:flex;flex-direction:column;align-items:center;gap:7px;
+  padding:10px 4px 8px;border-radius:10px;transition:background .15s;
+}
+.ring-item:hover{background:var(--gray-light)}
+.ring-visual{
+  position:relative;width:64px;height:64px;
+  display:flex;align-items:center;justify-content:center;
+}
+.ring-visual svg{position:absolute;inset:0;width:100%;height:100%}
+.ring-svg{transform:rotate(-90deg)}
+.ring-track{fill:none;stroke:var(--border);stroke-width:5}
+.ring-fill{fill:none;stroke-width:5;stroke-linecap:round}
+.ring-center-text{
+  position:relative;z-index:1;
+  font-size:.78rem;font-weight:700;text-align:center;line-height:1;
+}
+.ring-label{
+  font-size:.68rem;font-weight:500;color:var(--text-muted);
+  text-align:center;line-height:1.35;max-width:86px;word-break:break-word;
+}
+.c-done-txt{color:var(--green)}
+.c-wip-txt {color:var(--amber)}
+.c-none-txt{color:var(--text-light)}
+
+/* Loading & error */
+#loading{
+  display:none;position:fixed;inset:0;
+  background:rgba(250,248,244,.9);z-index:200;
+  align-items:center;justify-content:center;flex-direction:column;gap:12px;
+}
+.spinner{
+  width:34px;height:34px;border:3px solid var(--border);
+  border-top-color:var(--accent);border-radius:50%;
+  animation:spin .7s linear infinite;
+}
+@keyframes spin{to{transform:rotate(360deg)}}
+.loading-text{font-size:.88rem;color:var(--text-muted)}
+#error-toast{
+  display:none;position:fixed;bottom:22px;left:50%;transform:translateX(-50%);
+  background:#7F1D1D;color:#FEE2E2;border-radius:var(--radius-sm);
+  padding:11px 18px;font-size:.83rem;z-index:300;
+  box-shadow:var(--shadow-lg);max-width:90vw;text-align:center;
+}
+</style>
+</head>
+<body>
+
+<!-- ── UPLOAD SCREEN ── -->
+<div id="upload-screen">
+  <div class="upload-card" id="drop-zone">
+    <div class="upload-icon">📊</div>
+    <h1>3K-Project-Status</h1>
+    <p>Upload your project status spreadsheet to generate a visual dashboard with circular progress rings for each section.</p>
+    <button class="upload-btn" onclick="document.getElementById('file-input').click()">
+      <span>📂</span> Choose Excel File
+    </button>
+    <input type="file" id="file-input" accept=".xlsx,.xls">
+    <div class="upload-hint">Supports .xlsx · Drag &amp; drop supported</div>
+  </div>
+</div>
+
+<!-- Loading -->
+<div id="loading">
+  <div class="spinner"></div>
+  <div class="loading-text">Parsing dashboard data…</div>
+</div>
+
+<!-- Error toast -->
+<div id="error-toast"></div>
+
+<!-- ── DASHBOARD ── -->
+<div id="dashboard">
+  <div class="dash-header">
+    <div class="dash-header-left">
+      <div class="dash-eyebrow">3K-Project-Status</div>
+      <div class="dash-title" id="dash-title">—</div>
+      <div class="dash-date"  id="dash-date">—</div>
+    </div>
+    <div class="header-actions">
+      <button class="hdr-btn dl" onclick="downloadDashboard()">⬇ Download HTML</button>
+      <button class="hdr-btn"    onclick="resetDashboard()">↩ Upload New</button>
+    </div>
+  </div>
+
+  <div class="status-content">
+    <div class="status-grid" id="status-grid"></div>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════
+//  CONSTANTS
+// ═══════════════════════════════════════════════════════
+// Colour palette — cycles if more than 6 sections
+const SEC_PALETTE = [
+  '#C2692A','#D97706','#16A34A','#0EA5E9','#8B5CF6','#EC4899',
+];
+const CIRC = 163.4; // 2π × r26
+
+let DATA = null;
+
+// ═══════════════════════════════════════════════════════
+//  HELPERS
+// ═══════════════════════════════════════════════════════
+const $  = id => document.getElementById(id);
+const esc = s => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+const showLoad  = () => $('loading').style.display = 'flex';
+const hideLoad  = () => $('loading').style.display = 'none';
+const showErr   = m  => {
+  const t = $('error-toast');
+  t.textContent = m; t.style.display = 'block';
+  setTimeout(() => t.style.display = 'none', 4500);
+};
+
+function ringColor(pct) {
+  if (pct === 100) return { stroke:'#16A34A', cls:'c-done-txt' };
+  if (pct > 0)    return { stroke:'#D97706', cls:'c-wip-txt'  };
+  return                  { stroke:'#D1CCC6', cls:'c-none-txt' };
+}
+
+// ═══════════════════════════════════════════════════════
+//  RESET
+// ═══════════════════════════════════════════════════════
+function resetDashboard() {
+  $('dashboard').style.display    = 'none';
+  $('upload-screen').style.display = 'flex';
+  $('file-input').value = '';
+  $('status-grid').innerHTML = '';
+  DATA = null;
+}
+
+// ═══════════════════════════════════════════════════════
+//  FILE HANDLING
+// ═══════════════════════════════════════════════════════
+$('file-input').addEventListener('change', e => {
+  const f = e.target.files[0]; if (f) handleFile(f);
+});
+const dz = $('drop-zone');
+dz.addEventListener('dragover',  e => { e.preventDefault(); dz.classList.add('drag-over'); });
+dz.addEventListener('dragleave', ()  => dz.classList.remove('drag-over'));
+dz.addEventListener('drop', e => {
+  e.preventDefault(); dz.classList.remove('drag-over');
+  const f = e.dataTransfer.files[0]; if (f) handleFile(f);
+});
+// Also allow drop on full page
+document.addEventListener('dragover', e => e.preventDefault());
+document.addEventListener('drop', e => {
+  e.preventDefault();
+  const f = e.dataTransfer.files[0];
+  if (f && f.name.match(/\.xlsx?$/i)) handleFile(f);
+});
+
+function handleFile(file) {
+  if (!file.name.match(/\.xlsx?$/i)) { showErr('Please upload an .xlsx or .xls file.'); return; }
+  showLoad();
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const wb = XLSX.read(new Uint8Array(e.target.result), { type:'array', cellDates:true });
+      DATA = parseExcel(wb);
+      renderDashboard(DATA);
+      $('upload-screen').style.display = 'none';
+      $('dashboard').style.display    = 'block';
+    } catch(err) {
+      console.error(err);
+      showErr('Could not parse file. Please check the format.');
+    } finally { hideLoad(); }
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+// ═══════════════════════════════════════════════════════
+//  PARSE — flat single-sheet format
+//  Columns: Name | Order | Progress % | Type | Updated Date
+// ═══════════════════════════════════════════════════════
+function parseExcel(wb) {
+  const ws   = wb.Sheets[wb.SheetNames[0]];
+  const rows = XLSX.utils.sheet_to_json(ws, { header:1, defval:'', raw:false });
+
+  const R = { title:'', date:'', sections:[] };
+
+  // Row 0 = column headers — find column indices dynamically
+  const hdr = rows[0].map(h => String(h).trim().toLowerCase());
+  const iName  = hdr.findIndex(h => h === 'name');
+  const iOrder = hdr.findIndex(h => h === 'order');
+  const iPct   = hdr.findIndex(h => h.includes('progress'));
+  const iType  = hdr.findIndex(h => h === 'type');
+  const iDate  = hdr.findIndex(h => h.includes('date'));
+
+  const sectionMap = {}; // type → [ {label, value, order} ]
+
+  for (let i = 1; i < rows.length; i++) {
+    const row  = rows[i];
+    const name = String(row[iName]  || '').trim();
+    const type = String(row[iType]  || '').trim();
+    const pct  = parseFloat(String(row[iPct] || '0').replace('%','')) || 0;
+    const ord  = parseInt(row[iOrder]) || 0;
+    const date = row[iDate];
+
+    if (!name || !type) continue;
+
+    if (type === 'Project Info') {
+      R.title = name;
+      if (date) {
+        // date may be a string or JS Date from cellDates:true
+        if (typeof date === 'string' && date.trim()) {
+          R.date = formatDateStr(date.trim());
+        } else if (date instanceof Object && date.getFullYear) {
+          R.date = date.toLocaleDateString('en-GB', { day:'numeric', month:'long', year:'numeric' });
+        } else if (typeof date === 'number') {
+          // Excel serial
+          const d = new Date(Math.round((date - 25569) * 86400000));
+          R.date = d.toLocaleDateString('en-GB', { day:'numeric', month:'long', year:'numeric' });
+        } else {
+          R.date = String(date).trim();
+        }
+      }
+      continue;
+    }
+
+    if (!sectionMap[type]) sectionMap[type] = [];
+    sectionMap[type].push({ label:name, value:Math.min(1,Math.max(0,pct >= 1 ? pct/100 : pct)), order:ord });
+  }
+
+  // Sort sections by minimum order value of their items (preserves intended display order)
+  const sectionEntries = Object.entries(sectionMap).sort((a, b) => {
+    const minA = Math.min(...a[1].map(x => x.order));
+    const minB = Math.min(...b[1].map(x => x.order));
+    return minA - minB;
+  });
+
+  // Build sections, sorting items within each by order
+  sectionEntries.forEach(([name, items], idx) => {
+    items.sort((a,b) => a.order - b.order);
+    R.sections.push({
+      name,
+      color: SEC_PALETTE[idx % SEC_PALETTE.length],
+      items: items.map(i => ({ label:i.label, value:i.value })),
+    });
+  });
+
+  return R;
+}
+
+function formatDateStr(s) {
+  // Try to parse ISO-like strings
+  const d = new Date(s);
+  if (!isNaN(d)) return d.toLocaleDateString('en-GB', { day:'numeric', month:'long', year:'numeric' });
+  return s;
+}
+
+// ═══════════════════════════════════════════════════════
+//  RENDER
+// ═══════════════════════════════════════════════════════
+function renderDashboard(d) {
+  $('dash-title').textContent = d.title || '—';
+  $('dash-date').textContent  = d.date  ? `Updated: ${d.date}` : '';
+  renderStatus(d.sections);
+}
+
+function makeSVG(pct, secColor) {
+  const stroke = pct === 0 ? '#D1CCC6' : pct === 100 ? '#16A34A' : secColor;
+  const offset = CIRC * (1 - pct / 100);
+  return `<svg class="ring-svg" viewBox="0 0 60 60" xmlns="http://www.w3.org/2000/svg">
+    <circle class="ring-track" cx="30" cy="30" r="26"/>
+    <circle class="ring-fill" cx="30" cy="30" r="26"
+      stroke="${stroke}" stroke-dasharray="${CIRC}"
+      stroke-dashoffset="${CIRC}" data-target="${offset}"/>
+  </svg>`;
+}
+
+function renderStatus(sections) {
+  const grid = $('status-grid');
+  grid.innerHTML = '';
+
+  if (!sections.length) {
+    grid.innerHTML = '<p style="color:var(--text-muted);padding:24px;text-align:center">No status sections found in this file.</p>';
+    return;
+  }
+
+  sections.forEach((sec, si) => {
+    const tot = sec.items.length;
+    const avg = tot ? Math.round(sec.items.reduce((a,i) => a + i.value, 0) / tot * 100) : 0;
+    const oc  = avg === 100 ? 'c-done' : avg > 0 ? 'c-wip' : 'c-none';
+
+    const card = document.createElement('div');
+    card.className = 'status-card';
+    card.innerHTML = `
+      <div class="status-card-header">
+        <div class="sc-dot" style="background:${sec.color}"></div>
+        <div class="sc-title">${esc(sec.name)}</div>
+        <div class="sc-overall ${oc}">Overall ${avg}%</div>
+      </div>
+      <div class="ring-grid">
+        ${sec.items.map(item => {
+          const pct = Math.round(item.value * 100);
+          const col = ringColor(pct);
+          return `<div class="ring-item">
+            <div class="ring-visual">
+              ${makeSVG(pct, sec.color)}
+              <div class="ring-center-text ${col.cls}">${pct}%</div>
+            </div>
+            <div class="ring-label">${esc(item.label)}</div>
+          </div>`;
+        }).join('')}
+      </div>`;
+    grid.appendChild(card);
+
+    // Animate rings with stagger
+    requestAnimationFrame(() => {
+      card.querySelectorAll('.ring-fill[data-target]').forEach((el, ri) => {
+        const target = el.dataset.target;
+        setTimeout(() => {
+          el.style.transition = 'stroke-dashoffset 1s cubic-bezier(0.4,0,0.2,1)';
+          el.setAttribute('stroke-dashoffset', target);
+        }, 80 + si * 100 + ri * 28);
+      });
+    });
+  });
+}
+
+// ═══════════════════════════════════════════════════════
+//  DOWNLOAD DASHBOARD HTML
+// ═══════════════════════════════════════════════════════
+function downloadDashboard() {
+  if (!DATA) { showErr('No data loaded.'); return; }
+  const title = $('dash-title').textContent;
+  const date  = $('dash-date').textContent;
+
+  function staticRings(sections) {
+    return sections.map(sec => {
+      const tot = sec.items.length;
+      const avg = tot ? Math.round(sec.items.reduce((a,i) => a+i.value,0)/tot*100) : 0;
+      const oc  = avg===100?'c-done':avg>0?'c-wip':'c-none';
+      const rings = sec.items.map(item => {
+        const pct    = Math.round(item.value*100);
+        const col    = ringColor(pct);
+        const stroke = pct===0?'#D1CCC6':pct===100?'#16A34A':sec.color;
+        const offset = CIRC*(1-pct/100);
+        return `<div class="ring-item">
+          <div class="ring-visual">
+            <svg class="ring-svg" viewBox="0 0 60 60" xmlns="http://www.w3.org/2000/svg">
+              <circle class="ring-track" cx="30" cy="30" r="26"/>
+              <circle class="ring-fill" cx="30" cy="30" r="26" stroke="${stroke}" stroke-dasharray="${CIRC}" stroke-dashoffset="${offset}"/>
+            </svg>
+            <div class="ring-center-text ${col.cls}">${pct}%</div>
+          </div>
+          <div class="ring-label">${esc(item.label)}</div>
+        </div>`;
+      }).join('');
+      return `<div class="status-card">
+        <div class="status-card-header">
+          <div class="sc-dot" style="background:${sec.color}"></div>
+          <div class="sc-title">${esc(sec.name)}</div>
+          <div class="sc-overall ${oc}">Overall ${avg}%</div>
+        </div>
+        <div class="ring-grid">${rings}</div>
+      </div>`;
+    }).join('');
+  }
+
+  const html = `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0">
+<title>${esc(title)}</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600;9..40,700&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{--bg:#FAF8F4;--surface:#FFFFFF;--surface2:#F5F1EB;--border:#E8E0D4;--text:#1C1917;--text-muted:#78716C;--text-light:#A8A29E;--accent:#C2692A;--accent-light:#F5E6D8;--green:#16A34A;--amber:#D97706;--gray:#D1CCC6;--gray-light:#F5F5F4;--shadow-sm:0 1px 3px rgba(0,0,0,.06);--shadow:0 4px 12px rgba(0,0,0,.08);--radius:14px;--radius-sm:8px;--font-serif:'DM Serif Display',Georgia,serif;--font-sans:'DM Sans',system-ui,sans-serif}
+html{font-size:16px;-webkit-text-size-adjust:100%}body{font-family:var(--font-sans);background:var(--bg);color:var(--text);min-height:100vh}
+.dash-header{background:var(--text);color:#FAF8F4;padding:15px 20px;position:sticky;top:0;z-index:100;display:flex;align-items:center;gap:12px;box-shadow:0 2px 12px rgba(0,0,0,.2)}
+.dash-header-left{flex:1;min-width:0}
+.dash-eyebrow{font-size:.65rem;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--accent);margin-bottom:2px}
+.dash-title{font-family:var(--font-serif);font-size:clamp(.95rem,4vw,1.35rem);font-weight:400;line-height:1.2;color:#FAF8F4;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dash-date{font-size:.72rem;color:#A8A29E;margin-top:2px}
+.status-content{padding:20px 16px 40px}.status-grid{display:flex;flex-direction:column;gap:20px}
+.status-card{background:var(--surface);border-radius:var(--radius);border:1px solid var(--border);box-shadow:var(--shadow-sm);overflow:hidden}
+.status-card-header{padding:13px 18px;background:var(--surface2);border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px}
+.sc-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}.sc-title{font-size:.86rem;font-weight:600;color:var(--text);flex:1}
+.sc-overall{font-size:.74rem;font-weight:700;padding:3px 11px;border-radius:20px;border:1.5px solid currentColor}
+.sc-overall.c-done{color:var(--green)}.sc-overall.c-wip{color:var(--amber)}.sc-overall.c-none{color:var(--text-light);border-color:var(--border)}
+.ring-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(88px,1fr));gap:12px 8px;padding:16px}
+@media(max-width:480px){.ring-grid{grid-template-columns:repeat(auto-fill,minmax(74px,1fr));gap:10px 6px}}
+.ring-item{display:flex;flex-direction:column;align-items:center;gap:7px;padding:10px 4px 8px;border-radius:10px}
+.ring-svg{transform:rotate(-90deg)}.ring-track{fill:none;stroke:var(--border);stroke-width:5}.ring-fill{fill:none;stroke-width:5;stroke-linecap:round}
+.ring-visual{position:relative;width:64px;height:64px;display:flex;align-items:center;justify-content:center}
+.ring-visual svg{position:absolute;inset:0;width:100%;height:100%}
+.ring-center-text{position:relative;z-index:1;font-size:.78rem;font-weight:700;text-align:center;line-height:1}
+.ring-label{font-size:.68rem;font-weight:500;color:var(--text-muted);text-align:center;line-height:1.35;max-width:86px;word-break:break-word}
+.c-done-txt{color:var(--green)}.c-wip-txt{color:var(--amber)}.c-none-txt{color:var(--text-light)}
+</style>
+</head>
+<body>
+<div class="dash-header">
+  <div class="dash-header-left">
+    <div class="dash-eyebrow">3K-Project-Status</div>
+    <div class="dash-title">${esc(title)}</div>
+    <div class="dash-date">${esc(date)}</div>
+  </div>
+</div>
+<div class="status-content">
+  <div class="status-grid">${staticRings(DATA.sections)}</div>
+</div>
+</body>
+</html>`;
+
+  const blob = new Blob([html], { type:'text/html' });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href     = url;
+  a.download = (title || '3K-Project-Status').replace(/[^\w\s-]/g,'').trim().replace(/\s+/g,'-') + '.html';
+  document.body.appendChild(a); a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+</script>
+</body>
+</html>
