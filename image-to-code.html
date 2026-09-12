@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Image → Embed Code Converter</title>
+<style>
+:root{
+  --bg:#f5f7fb;--card:#fff;--text:#182033;--muted:#667085;--line:#d9deea;
+  --accent:#335cff;--accent2:#2746c7;--good:#0c7a43;--warn:#9a6700;--bad:#b42318;
+  --shadow:0 10px 30px rgba(16,24,40,.08);--radius:16px;
+}
+*{box-sizing:border-box}
+body{margin:0;font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:var(--bg);color:var(--text)}
+header{padding:28px 20px 10px;max-width:1180px;margin:auto}
+h1{margin:0 0 8px;font-size:clamp(26px,3.5vw,40px);letter-spacing:-.03em}
+header p{margin:0;color:var(--muted);max-width:780px;line-height:1.5}
+main{max-width:1180px;margin:0 auto;padding:20px;display:grid;grid-template-columns:minmax(0,1fr);gap:18px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);padding:18px}
+.drop{border:2px dashed #aeb7cc;border-radius:14px;min-height:190px;display:grid;place-items:center;text-align:center;padding:22px;transition:.2s;background:#fbfcff;cursor:pointer}
+.drop.drag{border-color:var(--accent);background:#eef2ff}.drop strong{display:block;font-size:18px;margin-bottom:6px}.drop small{color:var(--muted)}
+.preview-wrap{display:none;margin-top:16px;grid-template-columns:minmax(220px,360px) 1fr;gap:18px;align-items:start}.preview-wrap.show{display:grid}
+.preview-box{border:1px solid var(--line);border-radius:12px;padding:10px;background:linear-gradient(45deg,#f2f2f2 25%,transparent 25%),linear-gradient(-45deg,#f2f2f2 25%,transparent 25%),linear-gradient(45deg,transparent 75%,#f2f2f2 75%),linear-gradient(-45deg,transparent 75%,#f2f2f2 75%);background-size:20px 20px;background-position:0 0,0 10px,10px -10px,-10px 0px}
+.preview-box img{display:block;max-width:100%;max-height:320px;margin:auto;object-fit:contain}
+.meta{display:grid;grid-template-columns:130px 1fr;gap:8px 12px;font-size:14px}.meta div:nth-child(odd){color:var(--muted)}
+.mode-tabs{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px}.mode-tabs button{border:1px solid var(--line);background:#fff;padding:10px 14px;border-radius:10px;font-weight:700;cursor:pointer}.mode-tabs button.active{background:var(--accent);color:#fff;border-color:var(--accent)}
+.row{display:grid;grid-template-columns:repeat(12,1fr);gap:12px}.field{grid-column:span 6}.field.full{grid-column:1/-1}.field.third{grid-column:span 4}.field.quarter{grid-column:span 3}
+label{display:block;font-size:13px;font-weight:700;margin-bottom:6px}input[type=text],input[type=number],select,textarea{width:100%;border:1px solid var(--line);border-radius:10px;padding:10px 11px;font:inherit;background:#fff;color:var(--text)}
+input[type=range]{width:100%}.help{font-size:12px;color:var(--muted);margin-top:5px;line-height:1.35}
+details{border:1px solid var(--line);border-radius:12px;padding:12px;margin-top:14px}summary{cursor:pointer;font-weight:800}
+.actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:14px}.btn{border:0;border-radius:10px;padding:10px 14px;font-weight:800;cursor:pointer}.btn.primary{background:var(--accent);color:#fff}.btn.primary:hover{background:var(--accent2)}.btn.secondary{background:#edf1f7;color:var(--text)}.btn.ghost{background:#fff;border:1px solid var(--line)}
+.status{margin-top:12px;font-size:13px;color:var(--muted)}.status.ok{color:var(--good)}.status.warn{color:var(--warn)}.status.bad{color:var(--bad)}
+.code-grid{display:grid;grid-template-columns:1fr;gap:14px}.code-card{border:1px solid var(--line);border-radius:12px;overflow:hidden}.code-head{display:flex;justify-content:space-between;gap:10px;align-items:center;padding:10px 12px;background:#f8f9fc;border-bottom:1px solid var(--line)}.code-head strong{font-size:14px}.code-head span{font-size:12px;color:var(--muted)}
+textarea.code{min-height:220px;border:0;border-radius:0;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:12px;line-height:1.45;resize:vertical;background:#101828;color:#e6edf7;padding:14px}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:12px}.check{display:flex;align-items:center;gap:8px;margin-top:4px}.check input{width:auto}
+.badge{display:inline-block;padding:3px 8px;border-radius:999px;background:#eef2ff;color:#3448a6;font-size:11px;font-weight:800}
+.notice{padding:10px 12px;border-radius:10px;background:#fff8e6;color:#7a4d00;font-size:13px;line-height:1.4;margin-top:12px}
+footer{max-width:1180px;margin:0 auto;padding:0 20px 30px;color:var(--muted);font-size:12px}
+@media(max-width:760px){.preview-wrap.show{grid-template-columns:1fr}.field,.field.third,.field.quarter{grid-column:1/-1}.two{grid-template-columns:1fr}.meta{grid-template-columns:110px 1fr}}
+</style>
+</head>
+<body>
+<header>
+  <h1>Image → Embed Code Converter</h1>
+  <p>Offline, single-file converter for Base64 HTML, raster-in-SVG, and vector SVG. Your image stays in your browser.</p>
+</header>
+<main>
+  <section class="card">
+    <div id="drop" class="drop" tabindex="0" role="button" aria-label="Choose image">
+      <div><strong>Drop an image here</strong><small>or click to choose PNG, JPEG, WebP, GIF, BMP, or SVG</small></div>
+      <input id="file" type="file" accept="image/*" hidden>
+    </div>
+    <div id="previewWrap" class="preview-wrap">
+      <div class="preview-box"><img id="preview" alt="Image preview"></div>
+      <div>
+        <div class="meta">
+          <div>File</div><div id="mName">—</div>
+          <div>Type</div><div id="mType">—</div>
+          <div>Dimensions</div><div id="mDim">—</div>
+          <div>File size</div><div id="mSize">—</div>
+        </div>
+        <div class="notice">Tip: Base64 and embedded-SVG preserve photographs exactly. Vectorize mode creates real SVG paths and is best for diagrams, logos, line art, and simple graphics.</div>
+      </div>
+    </div>
+  </section>
+
+  <section class="card">
+    <div class="mode-tabs">
+      <button class="active" data-mode="base64">Base64 HTML</button>
+      <button data-mode="embedSvg">Embed as SVG</button>
+      <button data-mode="vectorSvg">Vectorize to SVG</button>
+    </div>
+
+    <div class="row">
+      <div class="field full"><label for="alt">Alt text / description</label><input id="alt" type="text" placeholder="Describe the image"></div>
+      <div class="field third"><label for="width">Width</label><input id="width" type="text" placeholder="e.g. 800px or 100%"></div>
+      <div class="field third"><label for="cssClass">CSS class</label><input id="cssClass" type="text" placeholder="optional"></div>
+      <div class="field third"><label>Formatting</label>
+        <div class="check"><input id="responsive" type="checkbox" checked><span>Responsive (max-width:100%)</span></div>
+        <div class="check"><input id="center" type="checkbox"><span>Center image</span></div>
+      </div>
+    </div>
+
+    <details id="advanced">
+      <summary>Advanced vectorization settings</summary>
+      <div class="row" style="margin-top:12px">
+        <div class="field third"><label for="vecMode">Vector mode</label><select id="vecMode"><option value="mono">Monochrome</option><option value="color">Color</option></select></div>
+        <div class="field third"><label for="detail">Detail / sample width</label><input id="detail" type="number" min="48" max="720" step="16" value="256"><div class="help">Higher = more detail, larger SVG.</div></div>
+        <div class="field third"><label for="alphaCut">Alpha cutoff</label><input id="alphaCut" type="range" min="0" max="255" value="16"><div class="help"><span id="alphaVal">16</span> / 255</div></div>
+        <div class="field third"><label for="threshold">Monochrome threshold</label><input id="threshold" type="range" min="0" max="255" value="150"><div class="help"><span id="thresholdVal">150</span> / 255</div></div>
+        <div class="field third"><label for="colors">Color count</label><input id="colors" type="number" min="2" max="12" value="6"><div class="help">Used in color mode.</div></div>
+        <div class="field third"><label for="noise">Noise removal</label><select id="noise"><option value="0">Off</option><option value="1" selected>Light</option><option value="2">Strong</option></select><div class="help">Removes isolated pixel regions.</div></div>
+        <div class="field third"><label for="bgMode">Background</label><select id="bgMode"><option value="transparent">Transparent</option><option value="white">White</option></select></div>
+        <div class="field third"><label for="precision">Coordinate precision</label><select id="precision"><option value="0" selected>Integer</option><option value="1">1 decimal</option><option value="2">2 decimals</option></select></div>
+      </div>
+    </details>
+
+    <div class="actions">
+      <button id="generate" class="btn primary">Generate code</button>
+      <button id="reset" class="btn secondary">Reset</button>
+      <span id="modeHint" class="badge">Exact image → Base64 HTML</span>
+    </div>
+    <div id="status" class="status">Choose an image to begin.</div>
+  </section>
+
+  <section class="card">
+    <div class="code-grid">
+      <div class="code-card">
+        <div class="code-head"><div><strong>Raw output</strong> <span id="rawInfo"></span></div><div class="actions" style="margin:0"><button class="btn ghost" data-copy="raw">Copy</button><button class="btn ghost" data-download="raw">Download</button></div></div>
+        <textarea id="raw" class="code" spellcheck="false" placeholder="Generated code appears here"></textarea>
+      </div>
+      <div class="code-card">
+        <div class="code-head"><div><strong>Formatted / ready-to-paste</strong> <span id="fmtInfo"></span></div><div class="actions" style="margin:0"><button class="btn ghost" data-copy="formatted">Copy</button><button class="btn ghost" data-download="formatted">Download</button></div></div>
+        <textarea id="formatted" class="code" spellcheck="false" placeholder="Formatted code appears here"></textarea>
+      </div>
+    </div>
+  </section>
+</main>
+<footer>Runs locally. No upload, server, account, or internet connection is required.</footer>
+
+<script>
+(() => {
+  const $ = s => document.querySelector(s);
+  const $$ = s => [...document.querySelectorAll(s)];
+  const state = { file:null, dataUrl:'', img:null, mode:'base64', mime:'', name:'' };
+  const els = {
+    drop:$('#drop'), file:$('#file'), preview:$('#preview'), previewWrap:$('#previewWrap'),
+    mName:$('#mName'),mType:$('#mType'),mDim:$('#mDim'),mSize:$('#mSize'),
+    alt:$('#alt'),width:$('#width'),cssClass:$('#cssClass'),responsive:$('#responsive'),center:$('#center'),
+    advanced:$('#advanced'),vecMode:$('#vecMode'),detail:$('#detail'),alphaCut:$('#alphaCut'),threshold:$('#threshold'),
+    colors:$('#colors'),noise:$('#noise'),bgMode:$('#bgMode'),precision:$('#precision'),
+    alphaVal:$('#alphaVal'),thresholdVal:$('#thresholdVal'),generate:$('#generate'),reset:$('#reset'),
+    modeHint:$('#modeHint'),status:$('#status'),raw:$('#raw'),formatted:$('#formatted'),rawInfo:$('#rawInfo'),fmtInfo:$('#fmtInfo')
+  };
+
+  function humanBytes(n){ if(!n && n!==0) return '—'; const u=['B','KB','MB','GB']; let i=0,v=n; while(v>=1024&&i<u.length-1){v/=1024;i++} return `${v.toFixed(i?1:0)} ${u[i]}`; }
+  function escapeAttr(s){ return String(s||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+  function setStatus(msg,type=''){ els.status.className='status'+(type?' '+type:''); els.status.textContent=msg; }
+  function mimeToExt(m){ return ({'image/png':'png','image/jpeg':'jpg','image/webp':'webp','image/gif':'gif','image/bmp':'bmp','image/svg+xml':'svg'})[m] || 'txt'; }
+
+  els.drop.addEventListener('click',()=>els.file.click());
+  els.drop.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();els.file.click();}});
+  ['dragenter','dragover'].forEach(ev=>els.drop.addEventListener(ev,e=>{e.preventDefault();els.drop.classList.add('drag')}));
+  ['dragleave','drop'].forEach(ev=>els.drop.addEventListener(ev,e=>{e.preventDefault();els.drop.classList.remove('drag')}));
+  els.drop.addEventListener('drop',e=>{ const f=e.dataTransfer.files?.[0]; if(f) loadFile(f); });
+  els.file.addEventListener('change',()=>{const f=els.file.files?.[0]; if(f) loadFile(f);});
+
+  async function loadFile(file){
+    if(!file.type.startsWith('image/')){ setStatus('Please choose an image file.','bad'); return; }
+    const dataUrl = await new Promise((res,rej)=>{const r=new FileReader();r.onload=()=>res(r.result);r.onerror=rej;r.readAsDataURL(file)});
+    const img = new Image();
+    img.onload=()=>{
+      state.file=file;state.dataUrl=dataUrl;state.img=img;state.mime=file.type||inferMime(dataUrl);state.name=file.name;
+      els.preview.src=dataUrl;els.previewWrap.classList.add('show');
+      els.mName.textContent=file.name;els.mType.textContent=state.mime;els.mDim.textContent=`${img.naturalWidth} × ${img.naturalHeight}px`;els.mSize.textContent=humanBytes(file.size);
+      if(!els.alt.value) els.alt.value=file.name.replace(/\.[^.]+$/,'').replace(/[-_]+/g,' ');
+      setStatus('Image loaded. Choose a mode and generate code.','ok');
+    };
+    img.onerror=()=>setStatus('The browser could not decode this image.','bad');
+    img.src=dataUrl;
+  }
+  function inferMime(data){ const m=/^data:([^;,]+)/.exec(data); return m?m[1]:'image/png'; }
+
+  $$('.mode-tabs button').forEach(b=>b.addEventListener('click',()=>{
+    $$('.mode-tabs button').forEach(x=>x.classList.remove('active')); b.classList.add('active'); state.mode=b.dataset.mode;
+    if(state.mode==='base64'){els.modeHint.textContent='Exact image → Base64 HTML';els.advanced.open=false;}
+    if(state.mode==='embedSvg'){els.modeHint.textContent='Exact image inside SVG';els.advanced.open=false;}
+    if(state.mode==='vectorSvg'){els.modeHint.textContent='Real SVG paths';}
+  }));
+  els.alphaCut.addEventListener('input',()=>els.alphaVal.textContent=els.alphaCut.value);
+  els.threshold.addEventListener('input',()=>els.thresholdVal.textContent=els.threshold.value);
+
+  els.generate.addEventListener('click',async()=>{
+    if(!state.img){setStatus('Choose an image first.','warn');return;}
+    els.generate.disabled=true; els.generate.textContent='Generating…'; setStatus('Processing image…');
+    await new Promise(r=>setTimeout(r,20));
+    try{
+      if(state.mode==='base64') generateBase64();
+      else if(state.mode==='embedSvg') generateEmbeddedSvg();
+      else await generateVectorSvg();
+      setStatus('Done. The output is ready to copy or download.','ok');
+    }catch(err){ console.error(err); setStatus(`Could not generate output: ${err.message||err}`,'bad'); }
+    finally{els.generate.disabled=false;els.generate.textContent='Generate code';}
+  });
+
+  function imgStyle(){
+    const styles=[]; if(els.width.value.trim()) styles.push(`width:${els.width.value.trim()}`);
+    if(els.responsive.checked){styles.push('max-width:100%');styles.push('height:auto');}
+    if(els.center.checked){styles.push('display:block');styles.push('margin-left:auto');styles.push('margin-right:auto');}
+    return styles.join(';');
+  }
+  function generateBase64(){
+    const alt=escapeAttr(els.alt.value), cls=escapeAttr(els.cssClass.value.trim()), style=imgStyle();
+    const raw=`<img src="${state.dataUrl}">`;
+    const attrs=[`src="${state.dataUrl}"`,`alt="${alt}"`,cls?`class="${cls}"`:'',style?`style="${style}"`:''].filter(Boolean).join(' ');
+    const fmt=`<img ${attrs}>`;
+    output(raw,fmt,'HTML','html');
+  }
+  function generateEmbeddedSvg(){
+    const w=state.img.naturalWidth,h=state.img.naturalHeight,alt=escapeXml(els.alt.value);
+    const raw=`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${w} ${h}" role="img" aria-label="${alt}">\n  <image href="${state.dataUrl}" width="${w}" height="${h}"/>\n</svg>`;
+    const style=svgStyle();
+    const cls=escapeAttr(els.cssClass.value.trim());
+    const fmt=`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${w} ${h}" role="img" aria-label="${alt}"${cls?` class="${cls}"`:''}${style?` style="${style}"`:''}>\n  <image href="${state.dataUrl}" width="${w}" height="${h}"/>\n</svg>`;
+    output(raw,fmt,'SVG','svg');
+  }
+  function svgStyle(){
+    const s=[]; if(els.width.value.trim()) s.push(`width:${els.width.value.trim()}`);
+    if(els.responsive.checked){s.push('max-width:100%');s.push('height:auto')}
+    if(els.center.checked){s.push('display:block');s.push('margin-left:auto');s.push('margin-right:auto')}
+    return s.join(';');
+  }
+  function escapeXml(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&apos;')}
+
+  async function generateVectorSvg(){
+    const maxW=Math.max(48,Math.min(720,Number(els.detail.value)||256));
+    const scale=Math.min(1,maxW/state.img.naturalWidth);
+    const w=Math.max(1,Math.round(state.img.naturalWidth*scale));
+    const h=Math.max(1,Math.round(state.img.naturalHeight*scale));
+    const cv=document.createElement('canvas');cv.width=w;cv.height=h;const ctx=cv.getContext('2d',{willReadFrequently:true});
+    ctx.imageSmoothingEnabled=true;ctx.imageSmoothingQuality='high';
+    if(els.bgMode.value==='white'){ctx.fillStyle='#fff';ctx.fillRect(0,0,w,h)}
+    ctx.drawImage(state.img,0,0,w,h);
+    const data=ctx.getImageData(0,0,w,h).data;
+    const alphaCut=Number(els.alphaCut.value), noise=Number(els.noise.value), mode=els.vecMode.value;
+    let labels, palette;
+    if(mode==='mono'){
+      const threshold=Number(els.threshold.value);palette=['#000000'];labels=new Int16Array(w*h);labels.fill(-1);
+      for(let i=0,p=0;i<data.length;i+=4,p++){
+        if(data[i+3]<alphaCut) continue;
+        const y=0.2126*data[i]+0.7152*data[i+1]+0.0722*data[i+2];
+        if(y<threshold) labels[p]=0;
+      }
+    }else{
+      const k=Math.max(2,Math.min(12,Number(els.colors.value)||6));
+      const result=kmeansQuantize(data,w,h,k,alphaCut);labels=result.labels;palette=result.palette;
+    }
+    for(let n=0;n<noise;n++) labels=despeckle(labels,w,h);
+    const groups=rectangulate(labels,w,h,palette.length);
+    const paths=[];
+    groups.forEach((rects,idx)=>{
+      if(!rects.length) return;
+      const d=rects.map(r=>`M${r.x} ${r.y}h${r.w}v${r.h}h-${r.w}Z`).join('');
+      paths.push(`  <path fill="${palette[idx]}" d="${d}"/>`);
+    });
+    const desc=escapeXml(els.alt.value);
+    const bg=els.bgMode.value==='white'?`  <rect width="100%" height="100%" fill="#ffffff"/>\n`:'';
+    const core=`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${w} ${h}" role="img" aria-label="${desc}">\n${bg}${paths.join('\n')}\n</svg>`;
+    const cls=escapeAttr(els.cssClass.value.trim()),style=svgStyle();
+    const formatted=core.replace('<svg xmlns="http://www.w3.org/2000/svg"',`<svg xmlns="http://www.w3.org/2000/svg"${cls?` class="${cls}"`:''}${style?` style="${style}"`:''}`);
+    output(core,formatted,'SVG paths','svg');
+    els.rawInfo.textContent += ` • ${w}×${h} vector grid • ${groups.reduce((a,g)=>a+g.length,0)} regions`;
+  }
+
+  function kmeansQuantize(data,w,h,k,alphaCut){
+    const samples=[];
+    const step=Math.max(1,Math.floor((w*h)/5000));
+    for(let p=0;p<w*h;p+=step){const i=p*4;if(data[i+3]>=alphaCut)samples.push([data[i],data[i+1],data[i+2]])}
+    if(!samples.length) return {labels:new Int16Array(w*h).fill(-1),palette:[]};
+    const centers=[]; for(let c=0;c<k;c++){centers.push(samples[Math.floor(c*(samples.length-1)/Math.max(1,k-1))].slice())}
+    for(let iter=0;iter<7;iter++){
+      const sums=Array.from({length:k},()=>[0,0,0,0]);
+      for(const s of samples){const j=nearest(s,centers);sums[j][0]+=s[0];sums[j][1]+=s[1];sums[j][2]+=s[2];sums[j][3]++}
+      for(let j=0;j<k;j++) if(sums[j][3]) centers[j]=[sums[j][0]/sums[j][3],sums[j][1]/sums[j][3],sums[j][2]/sums[j][3]];
+    }
+    const labels=new Int16Array(w*h);labels.fill(-1);
+    for(let p=0;p<w*h;p++){const i=p*4;if(data[i+3]>=alphaCut)labels[p]=nearest([data[i],data[i+1],data[i+2]],centers)}
+    const palette=centers.map(c=>'#'+c.map(v=>Math.max(0,Math.min(255,Math.round(v))).toString(16).padStart(2,'0')).join(''));
+    return {labels,palette};
+  }
+  function nearest(s,centers){let bi=0,bd=Infinity;for(let i=0;i<centers.length;i++){const c=centers[i],dr=s[0]-c[0],dg=s[1]-c[1],db=s[2]-c[2],d=dr*dr+dg*dg+db*db;if(d<bd){bd=d;bi=i}}return bi}
+  function despeckle(labels,w,h){
+    const out=new Int16Array(labels);
+    for(let y=1;y<h-1;y++) for(let x=1;x<w-1;x++){
+      const p=y*w+x,v=labels[p], ns=[labels[p-1],labels[p+1],labels[p-w],labels[p+w]];
+      const counts=new Map(); for(const n of ns) counts.set(n,(counts.get(n)||0)+1);
+      let best=v,count=counts.get(v)||0; for(const [n,c] of counts) if(c>count){best=n;count=c}
+      if(count>=3 && best!==v) out[p]=best;
+    }
+    return out;
+  }
+  function rectangulate(labels,w,h,colorCount){
+    const groups=Array.from({length:colorCount},()=>[]); let active=new Map();
+    for(let y=0;y<h;y++){
+      const runs=[]; let x=0;
+      while(x<w){const c=labels[y*w+x]; if(c<0){x++;continue} let x2=x+1;while(x2<w&&labels[y*w+x2]===c)x2++;runs.push({c,x,w:x2-x});x=x2}
+      const next=new Map();
+      for(const r of runs){const key=`${r.c}:${r.x}:${r.w}`;const prior=active.get(key);if(prior){prior.h++;next.set(key,prior)}else{next.set(key,{c:r.c,x:r.x,y,w:r.w,h:1})}}
+      for(const [key,rect] of active) if(!next.has(key)) groups[rect.c].push(rect);
+      active=next;
+    }
+    for(const rect of active.values()) groups[rect.c].push(rect);
+    return groups;
+  }
+
+  function output(raw,fmt,label,ext){
+    els.raw.value=raw;els.formatted.value=fmt;els.raw.dataset.ext=ext;els.formatted.dataset.ext=ext;
+    els.rawInfo.textContent=`${label} • ${humanBytes(new Blob([raw]).size)}`;els.fmtInfo.textContent=`${humanBytes(new Blob([fmt]).size)}`;
+  }
+
+  $$('[data-copy]').forEach(b=>b.addEventListener('click',async()=>{
+    const target=b.dataset.copy==='raw'?els.raw:els.formatted;
+    if(!target.value){setStatus('Nothing to copy yet.','warn');return}
+    try{await navigator.clipboard.writeText(target.value);setStatus('Copied to clipboard.','ok')}catch{target.select();document.execCommand('copy');setStatus('Copied to clipboard.','ok')}
+  }));
+  $$('[data-download]').forEach(b=>b.addEventListener('click',()=>{
+    const target=b.dataset.download==='raw'?els.raw:els.formatted;if(!target.value){setStatus('Nothing to download yet.','warn');return}
+    const ext=target.dataset.ext||'txt';const blob=new Blob([target.value],{type:ext==='svg'?'image/svg+xml':'text/html'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=`image-code-${b.dataset.download}.${ext}`;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1500);
+  }));
+
+  els.reset.addEventListener('click',()=>{
+    state.file=null;state.dataUrl='';state.img=null;state.mime='';state.name='';els.file.value='';els.preview.src='';els.previewWrap.classList.remove('show');
+    ['mName','mType','mDim','mSize'].forEach(k=>els[k].textContent='—');els.raw.value='';els.formatted.value='';els.rawInfo.textContent='';els.fmtInfo.textContent='';els.alt.value='';els.width.value='';els.cssClass.value='';
+    setStatus('Choose an image to begin.');
+  });
+})();
+</script>
+</body>
+</html>
